@@ -5,7 +5,8 @@ const month = document.querySelector("#month-query");
 const day = document.querySelector("#day-query");
 const country = document.querySelector("#country-query");
 const language = document.querySelector("#language-query");
-
+let allCountriesList;
+let allLanguagesList;
 
 // HOLIDAYS OF THE COUNTRIES
 const buttonHolidaysList = document.querySelector("#holidays-btn");
@@ -15,10 +16,13 @@ const getHolidays = async () => {
         let queryString = "";
         if (search.value) {
             queryString += `&search=${search.value}`;
+        } else {
+            if(!country.value) {
+                queryString += `&country=VN`;
+            } 
         }
         if (!year.value) {
-            alert("You need to fill out year");
-            return;
+            queryString += `&year=2023`;
         } else {
             queryString += `&year=${year.value}`;
         }
@@ -30,10 +34,8 @@ const getHolidays = async () => {
         }
         if (country.value) {
             queryString += `&country=${country.value.toUpperCase()}`;
-        } else {
-            alert("You need to fill out country");
-            return;
-        }
+        } 
+        
         if (language.value) {
             queryString += `&language=${language.value.toLowerCase()}`;
         }
@@ -57,7 +59,7 @@ const getHolidays = async () => {
 const renderHolidays = async () => {
     try {
         const data = await  getHolidays();
-        console.log(data.holidays);
+        console.log(data);
         const holidaysList = document.querySelector("#holidays-list");
         const ulHolidaysList = holidaysList.children[1];
         ulHolidaysList.innerHTML = "";
@@ -78,9 +80,75 @@ const renderHolidays = async () => {
     }
 }
 
-buttonHolidaysList.addEventListener("click", () => {
-    getHolidays();
-    renderHolidays();
+
+function letCountryName(countryValue) {
+    if(!countryValue) {
+        return "Viet Nam";
+    } else {
+        for (i = 0; i < allCountriesList.length; i++) {
+            if (allCountriesList[i].code === countryValue.toUpperCase()) {
+                return allCountriesList[i].name;
+        }
+    }
+} 
+}
+
+const holidaysTitle = document.querySelector("#holidays-title");
+
+function displayNameTitle(countryName) {
+    if(!country.value) {
+        if(search.value) {
+            return `Holidays all of countries`;
+        }
+    }
+    return `Holidays in ${countryName}`;
+}
+
+
+
+buttonHolidaysList.addEventListener("click", async function ()  {
+    if(!allCountriesList) {
+        allCountriesList = await getCountries();
+    }
+    let languageCheck = false;
+    if(language.value) {
+        if(!allLanguagesList) {
+            allLanguagesList = await getLanguages();
+        }
+        for (let i = 0; i < allLanguagesList.length; i++) {
+            if (allLanguagesList[i].code === language.value.toUpperCase()) {
+                languageCheck = true;
+                break;
+            }
+        }
+    } else {
+        languageCheck = true;
+    }
+
+    let isCheck = false;
+    if(!country.value) {
+        isCheck = true;
+    } else {
+        for (let i = 0; i < allCountriesList.length; i++) {
+            if (allCountriesList[i].code === country.value.toUpperCase()) {
+                isCheck = true;
+                break;
+            }
+        }
+    }
+    if (isCheck && languageCheck) {
+        getHolidays();
+        renderHolidays();
+        let countryName = letCountryName(country.value);
+        holidaysTitle.innerHTML = displayNameTitle(countryName);
+    } else if(!isCheck) {
+        alert(`${country.value} does not match the country list!`);
+        return;
+    } else {
+        alert(`${language.value} does not match the language list!`);
+    }
+
+
 })
 
 // COUNTRIES LIST
@@ -93,7 +161,7 @@ const getCountries = async () => {
       const response = await fetch(url);
       const data = await response.json();
     //   console.log("data", data); //have a look the retrieved data
-      return data;
+      return data.countries;
     } catch (err) {
       console.log("err", err);
     }
@@ -115,7 +183,7 @@ const getCountries = async () => {
       ulCountriesList.innerHTML = "";
   
       //5. Loop through the list of countries
-      data.countries.forEach((country, index) => {
+      data.forEach((country, index) => {
         //Create new `li` for each element
         const x = document.createElement("li");
         x.innerHTML = `<div class="bullet">${index + 1}</div>
@@ -149,7 +217,7 @@ const getLanguages = async () => {
         const response = await fetch(url);
         const data = await response.json();
         console.log("data", data);
-        return data;
+        return data.languages;
     } catch (error) {
         console.log('err', err);
     }
@@ -171,7 +239,7 @@ async function renderLanguages() {
         ulLanguagesList.innerHTML = "";
     
         //5. Loop through the list of languages
-        data.languages.forEach((language, index) => {
+        data.forEach((language, index) => {
           //Create new `li` for each element
           const x = document.createElement("li");
           x.innerHTML = `<div class="bullet">${index + 1}</div>
